@@ -68,9 +68,14 @@ const ClaimDetail = () => {
 
   const updateStatus = async (status: Claim["status"]) => {
     if (!claim) return;
-    const patch: Record<string, unknown> = { status };
-    if (status === "submitted" && !claim.submitted_at) patch.submitted_at = new Date().toISOString().slice(0, 10);
-    if (["approved", "rejected", "paid"].includes(status) && !claim.decided_at) patch.decided_at = new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const patch: {
+      status: Claim["status"];
+      submitted_at?: string;
+      decided_at?: string;
+    } = { status };
+    if (status === "submitted" && !claim.submitted_at) patch.submitted_at = today;
+    if (["approved", "rejected", "paid"].includes(status) && !claim.decided_at) patch.decided_at = today;
     const { error } = await supabase.from("claims").update(patch).eq("id", claim.id);
     if (error) {
       toast.error(error.message);
