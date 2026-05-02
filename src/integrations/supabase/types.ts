@@ -183,6 +183,131 @@ export type Database = {
         }
         Relationships: []
       }
+      claim_documents: {
+        Row: {
+          bill_id: string | null
+          claim_id: string | null
+          content: string | null
+          created_at: string
+          file_path: string | null
+          id: string
+          kind: Database["public"]["Enums"]["claim_doc_kind"]
+          language: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bill_id?: string | null
+          claim_id?: string | null
+          content?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["claim_doc_kind"]
+          language?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bill_id?: string | null
+          claim_id?: string | null
+          content?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["claim_doc_kind"]
+          language?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_documents_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_documents_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claims: {
+        Row: {
+          amount_approved: number | null
+          amount_claimed: number | null
+          bill_id: string | null
+          claim_number: string | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          insurer_name: string | null
+          kind: Database["public"]["Enums"]["claim_kind"]
+          notes: string | null
+          policy_number: string | null
+          scheme_name: string | null
+          status: Database["public"]["Enums"]["claim_status"]
+          submitted_at: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_approved?: number | null
+          amount_claimed?: number | null
+          bill_id?: string | null
+          claim_number?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          insurer_name?: string | null
+          kind?: Database["public"]["Enums"]["claim_kind"]
+          notes?: string | null
+          policy_number?: string | null
+          scheme_name?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          submitted_at?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_approved?: number | null
+          amount_claimed?: number | null
+          bill_id?: string | null
+          claim_number?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          insurer_name?: string | null
+          kind?: Database["public"]["Enums"]["claim_kind"]
+          notes?: string | null
+          policy_number?: string | null
+          scheme_name?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          submitted_at?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claims_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -213,6 +338,63 @@ export type Database = {
         }
         Relationships: []
       }
+      reminders: {
+        Row: {
+          bill_id: string | null
+          claim_id: string | null
+          created_at: string
+          description: string | null
+          done_at: string | null
+          due_at: string
+          id: string
+          sent_at: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bill_id?: string | null
+          claim_id?: string | null
+          created_at?: string
+          description?: string | null
+          done_at?: string | null
+          due_at: string
+          id?: string
+          sent_at?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bill_id?: string | null
+          claim_id?: string | null
+          created_at?: string
+          description?: string | null
+          done_at?: string | null
+          due_at?: string
+          id?: string
+          sent_at?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -222,6 +404,20 @@ export type Database = {
     }
     Enums: {
       bill_status: "uploaded" | "processing" | "audited" | "failed"
+      claim_doc_kind:
+        | "dispute_letter"
+        | "scheme_application"
+        | "upload"
+        | "other"
+      claim_kind: "insurance" | "scheme" | "hospital_dispute"
+      claim_status:
+        | "draft"
+        | "submitted"
+        | "in_review"
+        | "approved"
+        | "rejected"
+        | "paid"
+        | "closed"
       finding_kind:
         | "overcharge"
         | "scheme_eligibility"
@@ -358,6 +554,22 @@ export const Constants = {
   public: {
     Enums: {
       bill_status: ["uploaded", "processing", "audited", "failed"],
+      claim_doc_kind: [
+        "dispute_letter",
+        "scheme_application",
+        "upload",
+        "other",
+      ],
+      claim_kind: ["insurance", "scheme", "hospital_dispute"],
+      claim_status: [
+        "draft",
+        "submitted",
+        "in_review",
+        "approved",
+        "rejected",
+        "paid",
+        "closed",
+      ],
       finding_kind: [
         "overcharge",
         "scheme_eligibility",

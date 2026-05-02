@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, AlertTriangle, CheckCircle2, IndianRupee, Sparkles } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, IndianRupee, Sparkles, FilePlus2 } from "lucide-react";
 import { formatINR } from "@/lib/format";
 
 type Bill = {
@@ -104,6 +104,11 @@ const BillDetail = () => {
               {bill.bill_number && <>#{bill.bill_number}</>}
             </div>
           </div>
+          <Button asChild className="bg-gradient-hero shadow-elegant">
+            <Link to={`/claims/new?bill_id=${bill.id}`}>
+              <FilePlus2 className="mr-2 h-4 w-4" /> Start a claim
+            </Link>
+          </Button>
         </div>
 
         {failed && (

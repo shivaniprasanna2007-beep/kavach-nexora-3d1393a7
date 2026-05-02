@@ -15,6 +15,11 @@ import UploadPage from "./pages/Upload";
 import Processing from "./pages/Processing";
 import BillDetail from "./pages/BillDetail";
 import History from "./pages/History";
+import Claims from "./pages/Claims";
+import NewClaim from "./pages/NewClaim";
+import ClaimDetail from "./pages/ClaimDetail";
+import Schemes from "./pages/Schemes";
+import Reminders from "./pages/Reminders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +42,11 @@ const App = () => (
             <Route path="/processing/:id" element={<ProtectedRoute><Processing /></ProtectedRoute>} />
             <Route path="/bill/:id" element={<ProtectedRoute><BillDetail /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+            <Route path="/claims" element={<ProtectedRoute><Claims /></ProtectedRoute>} />
+            <Route path="/claims/new" element={<ProtectedRoute><NewClaim /></ProtectedRoute>} />
+            <Route path="/claims/:id" element={<ProtectedRoute><ClaimDetail /></ProtectedRoute>} />
+            <Route path="/schemes" element={<ProtectedRoute><Schemes /></ProtectedRoute>} />
+            <Route path="/reminders" element={<ProtectedRoute><Reminders /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
