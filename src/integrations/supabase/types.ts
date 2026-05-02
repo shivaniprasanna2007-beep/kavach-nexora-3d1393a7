@@ -14,7 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_findings: {
+        Row: {
+          bill_id: string
+          created_at: string
+          description: string | null
+          estimated_savings: number | null
+          id: string
+          kind: Database["public"]["Enums"]["finding_kind"]
+          recommended_action: string | null
+          severity: Database["public"]["Enums"]["finding_severity"]
+          title: string
+          user_id: string
+        }
+        Insert: {
+          bill_id: string
+          created_at?: string
+          description?: string | null
+          estimated_savings?: number | null
+          id?: string
+          kind: Database["public"]["Enums"]["finding_kind"]
+          recommended_action?: string | null
+          severity?: Database["public"]["Enums"]["finding_severity"]
+          title: string
+          user_id: string
+        }
+        Update: {
+          bill_id?: string
+          created_at?: string
+          description?: string | null
+          estimated_savings?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["finding_kind"]
+          recommended_action?: string | null
+          severity?: Database["public"]["Enums"]["finding_severity"]
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_findings_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bill_items: {
+        Row: {
+          amount: number | null
+          bill_id: string
+          category: string | null
+          created_at: string
+          description: string
+          fair_price: number | null
+          id: string
+          is_overcharged: boolean | null
+          notes: string | null
+          overcharge: number | null
+          quantity: number | null
+          unit_price: number | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          bill_id: string
+          category?: string | null
+          created_at?: string
+          description: string
+          fair_price?: number | null
+          id?: string
+          is_overcharged?: boolean | null
+          notes?: string | null
+          overcharge?: number | null
+          quantity?: number | null
+          unit_price?: number | null
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          bill_id?: string
+          category?: string | null
+          created_at?: string
+          description?: string
+          fair_price?: number | null
+          id?: string
+          is_overcharged?: boolean | null
+          notes?: string | null
+          overcharge?: number | null
+          quantity?: number | null
+          unit_price?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_items_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bills: {
+        Row: {
+          audit_raw: Json | null
+          audit_summary: string | null
+          bill_date: string | null
+          bill_number: string | null
+          created_at: string
+          error_message: string | null
+          file_mime: string | null
+          file_path: string
+          hospital_name: string | null
+          id: string
+          language: string
+          patient_name: string | null
+          potential_savings: number | null
+          status: Database["public"]["Enums"]["bill_status"]
+          total_billed: number | null
+          total_fair: number | null
+          total_overcharge: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audit_raw?: Json | null
+          audit_summary?: string | null
+          bill_date?: string | null
+          bill_number?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_mime?: string | null
+          file_path: string
+          hospital_name?: string | null
+          id?: string
+          language?: string
+          patient_name?: string | null
+          potential_savings?: number | null
+          status?: Database["public"]["Enums"]["bill_status"]
+          total_billed?: number | null
+          total_fair?: number | null
+          total_overcharge?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audit_raw?: Json | null
+          audit_summary?: string | null
+          bill_date?: string | null
+          bill_number?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_mime?: string | null
+          file_path?: string
+          hospital_name?: string | null
+          id?: string
+          language?: string
+          patient_name?: string | null
+          potential_savings?: number | null
+          status?: Database["public"]["Enums"]["bill_status"]
+          total_billed?: number | null
+          total_fair?: number | null
+          total_overcharge?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          family_group_id: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          preferred_language: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          family_group_id?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          preferred_language?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          family_group_id?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          preferred_language?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +221,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      bill_status: "uploaded" | "processing" | "audited" | "failed"
+      finding_kind:
+        | "overcharge"
+        | "scheme_eligibility"
+        | "duplicate"
+        | "unnecessary"
+        | "insurance"
+        | "other"
+      finding_severity: "info" | "low" | "medium" | "high"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +356,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      bill_status: ["uploaded", "processing", "audited", "failed"],
+      finding_kind: [
+        "overcharge",
+        "scheme_eligibility",
+        "duplicate",
+        "unnecessary",
+        "insurance",
+        "other",
+      ],
+      finding_severity: ["info", "low", "medium", "high"],
+    },
   },
 } as const
