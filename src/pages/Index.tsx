@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { ShieldCheck, ScanSearch, FileSearch, IndianRupee, Sparkles, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
+import SEO from "@/components/SEO";
 import heroImg from "@/assets/hero-kavach.jpg";
 import { LANGUAGES } from "@/lib/languages";
 
@@ -21,6 +23,10 @@ const testimonials = [
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="KAVACH — AI hospital bill auditor for India"
+        description="Don't pay a rupee more than you owe. KAVACH audits hospital bills, finds overcharges and helps you claim insurance and government schemes."
+      />
       <AppHeader />
 
       {/* Hero */}
@@ -119,16 +125,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/60 py-10">
-        <div className="container flex flex-col items-center justify-between gap-4 text-sm text-muted-foreground md:flex-row">
-          <div>© {new Date().getFullYear()} KAVACH · Hospital bills, decoded.</div>
-          <div className="flex gap-6">
-            <Link to="/login" className="hover:text-foreground">Login</Link>
-            <Link to="/signup" className="hover:text-foreground">Sign up</Link>
-          </div>
-        </div>
-      </footer>
+      <AppFooter />
     </div>
   );
 };
