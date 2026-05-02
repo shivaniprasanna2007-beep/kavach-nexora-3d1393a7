@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, AlertTriangle, CheckCircle2, IndianRupee, Sparkles, FilePlus2 } from "lucide-react";
+import { ArrowLeft, AlertTriangle, IndianRupee, Sparkles, FilePlus2 } from "lucide-react";
 import { formatINR } from "@/lib/format";
 
 type Bill = {
@@ -176,30 +176,27 @@ const BillDetail = () => {
             <h2 className="font-display text-xl font-semibold">Line items</h2>
             <div className="mt-4 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft">
               <div className="grid grid-cols-12 gap-2 border-b border-border/60 bg-muted/40 px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <div className="col-span-6">Item</div>
+                <div className="col-span-5">Description</div>
                 <div className="col-span-2 text-right">Billed</div>
-                <div className="col-span-2 text-right">Fair</div>
+                <div className="col-span-2 text-right">Fair rate</div>
                 <div className="col-span-2 text-right">Overcharge</div>
+                <div className="col-span-1 text-right">Status</div>
               </div>
               {items.map((it) => (
                 <div key={it.id} className="grid grid-cols-12 gap-2 border-b border-border/60 px-4 py-3 text-sm last:border-0">
-                  <div className="col-span-6">
-                    <div className="flex items-center gap-2">
-                      {it.is_overcharged ? (
-                        <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                      ) : (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-secondary" />
-                      )}
-                      <span className="font-medium">{it.description}</span>
-                    </div>
+                  <div className="col-span-5">
+                    <span className="font-medium">{it.description}</span>
                     {it.notes && <div className="mt-0.5 text-xs text-muted-foreground">{it.notes}</div>}
                   </div>
                   <div className="col-span-2 text-right">{formatINR(it.amount)}</div>
                   <div className="col-span-2 text-right text-muted-foreground">
                     {it.fair_price != null ? formatINR(it.fair_price) : "—"}
                   </div>
-                  <div className={`col-span-2 text-right font-medium ${it.is_overcharged ? "text-warning" : "text-muted-foreground"}`}>
+                  <div className={`col-span-2 text-right font-medium ${it.overcharge ? "text-warning" : "text-muted-foreground"}`}>
                     {it.overcharge ? formatINR(it.overcharge) : "—"}
+                  </div>
+                  <div className="col-span-1 flex justify-end">
+                    <StatusBadge status={(it.category as string) || (it.is_overcharged ? "overcharged" : "fair")} />
                   </div>
                 </div>
               ))}
@@ -254,6 +251,22 @@ const SeverityDot = ({ severity }: { severity: string }) => {
           ? "bg-primary"
           : "bg-muted-foreground";
   return <span className={`inline-block h-2 w-2 rounded-full ${cls}`} />;
+};
+
+const StatusBadge = ({ status }: { status: string }) => {
+  const map: Record<string, string> = {
+    overcharged: "bg-destructive/15 text-destructive border-destructive/30",
+    fair: "bg-secondary/15 text-secondary border-secondary/30",
+    unverified: "bg-warning/15 text-warning border-warning/30",
+    duplicate: "bg-purple-500/15 text-purple-600 border-purple-500/30 dark:text-purple-400",
+  };
+  const cls = map[status] ?? "bg-muted text-muted-foreground border-border";
+  const label = status.charAt(0).toUpperCase() + status.slice(1);
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${cls}`}>
+      {label}
+    </span>
+  );
 };
 
 export default BillDetail;
