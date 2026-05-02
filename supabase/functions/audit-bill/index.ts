@@ -10,107 +10,36 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 
+type LineItem = {
+  description: string;
+  billed_amount: number;
+  fair_amount: number;
+  overcharge: number;
+  status: "overcharged" | "fair" | "duplicate" | "unverified";
+  reason?: string;
+};
+
+type Scheme = { name: string; applicable: boolean; reason?: string };
+
 type AuditPayload = {
+  summary: string;
+  total_billed: number;
+  fair_value: number;
+  total_overcharge: number;
+  line_items: LineItem[];
+  schemes: Scheme[];
+  recommendations: string[];
   hospital_name?: string | null;
   patient_name?: string | null;
   bill_date?: string | null;
   bill_number?: string | null;
-  total_billed?: number | null;
-  total_fair?: number | null;
-  total_overcharge?: number | null;
-  potential_savings?: number | null;
-  summary?: string;
-  items?: Array<{
-    description: string;
-    category?: string | null;
-    quantity?: number | null;
-    unit_price?: number | null;
-    amount?: number | null;
-    fair_price?: number | null;
-    overcharge?: number | null;
-    is_overcharged?: boolean;
-    notes?: string | null;
-  }>;
-  findings?: Array<{
-    kind: "overcharge" | "scheme_eligibility" | "duplicate" | "unnecessary" | "insurance" | "other";
-    severity: "info" | "low" | "medium" | "high";
-    title: string;
-    description?: string;
-    estimated_savings?: number | null;
-    recommended_action?: string;
-  }>;
 };
 
-const SYSTEM_PROMPT = `You are KAVACH, an expert hospital-bill auditor for Indian patients.
-You receive a single image (or PDF page) of a hospital bill. In ONE pass you must:
-  1. OCR the bill (it may be in English, Hindi, Tamil, Telugu, Marathi, etc.).
-  2. Extract structured line items (description, qty, unit price, amount).
-  3. Audit each item: estimate a fair market / CGHS-rate price, flag overcharges, duplicates, unnecessary items.
-  4. Identify likely scheme eligibility (Ayushman Bharat / PMJAY, ESI, CGHS, state schemes) and insurance claim hints.
-  5. Produce a concise patient-friendly summary in the requested output language.
+const SYSTEM_PROMPT = `You are a hospital bill auditor for India. Analyze this bill and return ONLY a JSON object with this exact structure, no other text:
 
-If the image is unreadable or not a hospital bill, return empty items and a finding explaining why.
-Always be conservative with fair prices — if unsure, leave fair_price null and is_overcharged false.
-All monetary values are in INR unless the bill clearly states otherwise.`;
+{"summary": "2-3 sentence plain language summary", "total_billed": number, "fair_value": number, "total_overcharge": number, "line_items": [{"description": "item name", "billed_amount": number, "fair_amount": number, "overcharge": number, "status": "overcharged|fair|duplicate|unverified", "reason": "why flagged or why fair"}], "schemes": [{"name": "scheme name", "applicable": true/false, "reason": "why applicable"}], "recommendations": ["action 1", "action 2"]}
 
-const TOOL = {
-  type: "function",
-  function: {
-    name: "submit_audit",
-    description: "Submit the structured audit of the hospital bill.",
-    parameters: {
-      type: "object",
-      properties: {
-        hospital_name: { type: ["string", "null"] },
-        patient_name: { type: ["string", "null"] },
-        bill_date: { type: ["string", "null"], description: "ISO date YYYY-MM-DD" },
-        bill_number: { type: ["string", "null"] },
-        total_billed: { type: ["number", "null"] },
-        total_fair: { type: ["number", "null"] },
-        total_overcharge: { type: ["number", "null"] },
-        potential_savings: { type: ["number", "null"] },
-        summary: { type: "string" },
-        items: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              description: { type: "string" },
-              category: { type: ["string", "null"] },
-              quantity: { type: ["number", "null"] },
-              unit_price: { type: ["number", "null"] },
-              amount: { type: ["number", "null"] },
-              fair_price: { type: ["number", "null"] },
-              overcharge: { type: ["number", "null"] },
-              is_overcharged: { type: "boolean" },
-              notes: { type: ["string", "null"] },
-            },
-            required: ["description", "is_overcharged"],
-          },
-        },
-        findings: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              kind: {
-                type: "string",
-                enum: ["overcharge", "scheme_eligibility", "duplicate", "unnecessary", "insurance", "other"],
-              },
-              severity: { type: "string", enum: ["info", "low", "medium", "high"] },
-              title: { type: "string" },
-              description: { type: "string" },
-              estimated_savings: { type: ["number", "null"] },
-              recommended_action: { type: "string" },
-            },
-            required: ["kind", "severity", "title"],
-          },
-        },
-      },
-      required: ["summary", "items", "findings"],
-    },
-  },
-};
+For fair_amount, use CGHS 2023 rates if the procedure is listed. If unlisted, use typical private hospital rates for India and mark status as unverified. Calculate overcharge as billed_amount minus fair_amount (minimum 0). Be specific — do not say 'all items are fair priced' without checking each line item individually against CGHS rates.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -181,14 +110,13 @@ Deno.serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: `Audit this hospital bill. Output language for summary, finding titles/descriptions and recommended_action: ${langName}. Keep keys (description, category, kind, severity) in English.`,
+                text: `Audit this hospital bill. Output language for summary, reasons, scheme reasons, and recommendations: ${langName}. Keep JSON keys and the "status" enum value in English. Also extract hospital_name, patient_name, bill_date (YYYY-MM-DD) and bill_number into the JSON if visible.`,
               },
               { type: "image_url", image_url: { url: dataUrl } },
             ],
           },
         ],
-        tools: [TOOL],
-        tool_choice: { type: "function", function: { name: "submit_audit" } },
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -206,69 +134,89 @@ Deno.serve(async (req) => {
     }
 
     const aiData = await aiResp.json();
-    const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
+    const rawContent: string = aiData?.choices?.[0]?.message?.content ?? "";
+    if (!rawContent) {
       await admin
         .from("bills")
-        .update({ status: "failed", error_message: "No structured response from AI" })
+        .update({ status: "failed", error_message: "Empty AI response" })
         .eq("id", bill_id);
-      return json({ error: "AI did not return structured audit" }, 500);
+      return json({ error: "AI returned no content" }, 500);
     }
 
     let parsed: AuditPayload;
     try {
-      parsed = JSON.parse(toolCall.function.arguments);
+      parsed = JSON.parse(stripCodeFences(rawContent));
     } catch (_e) {
       await admin.from("bills").update({ status: "failed", error_message: "Invalid AI JSON" }).eq("id", bill_id);
       return json({ error: "Invalid AI response" }, 500);
     }
 
-    // Compute totals defensively
-    const items = parsed.items ?? [];
+    const lineItems = Array.isArray(parsed.line_items) ? parsed.line_items : [];
     const totalBilled =
-      parsed.total_billed ?? items.reduce((s, it) => s + (Number(it.amount) || 0), 0);
-    const totalFair =
-      parsed.total_fair ?? items.reduce((s, it) => s + (Number(it.fair_price ?? it.amount) || 0), 0);
-    const totalOver = parsed.total_overcharge ?? Math.max(0, totalBilled - totalFair);
-    const findings = parsed.findings ?? [];
-    const findingSavings = findings.reduce((s, f) => s + (Number(f.estimated_savings) || 0), 0);
-    const potentialSavings = parsed.potential_savings ?? Math.max(totalOver, findingSavings);
+      Number(parsed.total_billed) ||
+      lineItems.reduce((s, it) => s + (Number(it.billed_amount) || 0), 0);
+    const fairValue =
+      Number(parsed.fair_value) ||
+      lineItems.reduce((s, it) => s + (Number(it.fair_amount) || 0), 0);
+    const totalOver =
+      Number(parsed.total_overcharge) ?? Math.max(0, totalBilled - fairValue);
+    const potentialSavings = Math.max(0, totalOver);
 
     // Persist results
     await admin.from("bill_items").delete().eq("bill_id", bill_id);
     await admin.from("audit_findings").delete().eq("bill_id", bill_id);
 
-    if (items.length) {
+    if (lineItems.length) {
       await admin.from("bill_items").insert(
-        items.map((it) => ({
-          bill_id,
-          user_id: user.id,
-          description: it.description?.slice(0, 500) || "Item",
-          category: it.category ?? null,
-          quantity: it.quantity ?? 1,
-          unit_price: it.unit_price ?? null,
-          amount: it.amount ?? null,
-          fair_price: it.fair_price ?? null,
-          overcharge: it.overcharge ?? null,
-          is_overcharged: !!it.is_overcharged,
-          notes: it.notes ?? null,
-        })),
+        lineItems.map((it) => {
+          const status = (it.status as string) || "unverified";
+          return {
+            bill_id,
+            user_id: user.id,
+            description: (it.description || "Item").slice(0, 500),
+            category: status, // store status here for filtering
+            quantity: 1,
+            unit_price: null,
+            amount: Number(it.billed_amount) || 0,
+            fair_price: Number(it.fair_amount) || 0,
+            overcharge: Math.max(0, Number(it.overcharge) || 0),
+            is_overcharged: status === "overcharged" || status === "duplicate",
+            notes: it.reason ?? null,
+          };
+        }),
       );
     }
 
-    if (findings.length) {
-      await admin.from("audit_findings").insert(
-        findings.map((f) => ({
-          bill_id,
-          user_id: user.id,
-          kind: f.kind,
-          severity: f.severity,
-          title: f.title.slice(0, 200),
-          description: f.description ?? null,
-          estimated_savings: f.estimated_savings ?? null,
-          recommended_action: f.recommended_action ?? null,
-        })),
-      );
+    // Persist schemes + recommendations as audit_findings for cross-feature use.
+    const findingsRows: Array<Record<string, unknown>> = [];
+    for (const s of parsed.schemes ?? []) {
+      if (!s?.name) continue;
+      findingsRows.push({
+        bill_id,
+        user_id: user.id,
+        kind: "scheme_eligibility",
+        severity: s.applicable ? "medium" : "info",
+        title: `${s.name}${s.applicable ? " — likely eligible" : " — not applicable"}`.slice(0, 200),
+        description: s.reason ?? null,
+        estimated_savings: null,
+        recommended_action: s.applicable ? `Check eligibility for ${s.name}` : null,
+      });
+    }
+    for (const r of parsed.recommendations ?? []) {
+      if (!r) continue;
+      findingsRows.push({
+        bill_id,
+        user_id: user.id,
+        kind: "other",
+        severity: "low",
+        title: String(r).slice(0, 200),
+        description: null,
+        estimated_savings: null,
+        recommended_action: String(r),
+      });
+    }
+    if (findingsRows.length) {
+      await admin.from("audit_findings").insert(findingsRows);
     }
 
     await admin
@@ -280,7 +228,7 @@ Deno.serve(async (req) => {
         bill_date: parsed.bill_date || null,
         bill_number: parsed.bill_number ?? null,
         total_billed: round2(totalBilled),
-        total_fair: round2(totalFair),
+        total_fair: round2(fairValue),
         total_overcharge: round2(totalOver),
         potential_savings: round2(potentialSavings),
         audit_summary: parsed.summary ?? null,
@@ -305,6 +253,14 @@ function json(body: unknown, status = 200) {
 function round2(n: number | null | undefined) {
   if (n == null || isNaN(n as number)) return null;
   return Math.round((n as number) * 100) / 100;
+}
+
+function stripCodeFences(s: string) {
+  const trimmed = s.trim();
+  if (trimmed.startsWith("```")) {
+    return trimmed.replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
+  }
+  return trimmed;
 }
 
 function languageName(code: string) {
